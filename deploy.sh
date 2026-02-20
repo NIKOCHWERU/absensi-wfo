@@ -26,13 +26,15 @@ pm2 start ecosystem.config.cjs || pm2 restart ecosystem.config.cjs || { echo "PM
 pm2 save
 
 # 5. Configure Nginx
-echo "Configuring Nginx..."
-if [ ! -f "$NGINX_CONF" ]; then
-    echo "Creating Nginx configuration..."
+echo "Configuring Nginx for $DOMAIN..."
+if [ ! -L "/etc/nginx/sites-enabled/$DOMAIN" ] && [ ! -f "/etc/nginx/sites-enabled/$DOMAIN" ]; then
+    echo "Creating isolated Nginx configuration..."
     cat <<EOF | sudo tee $NGINX_CONF
 server {
+    listen 80;
     server_name $DOMAIN;
 
+    # Anti-collision: Ensure this doesn't capture other domains
     location / {
         proxy_pass http://localhost:$PORT;
         proxy_http_version 1.1;
@@ -42,9 +44,8 @@ server {
         proxy_cache_bypass \$http_upgrade;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
-    listen 80;
 }
 EOF
 
