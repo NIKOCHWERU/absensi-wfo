@@ -19,7 +19,9 @@ import AdminRecap from "@/pages/admin/RecapPage";
 import InfoBoardPage from "@/pages/admin/InfoBoardPage";
 import PiketSchedulePage from "@/pages/admin/PiketSchedulePage";
 import ShiftSwapApprovalPage from "@/pages/admin/ShiftSwapApprovalPage";
+import PermitManagementPage from "@/pages/admin/PermitManagementPage";
 import ShiftSwapPage from "@/pages/employee/ShiftSwapPage";
+import PermitPage from "@/pages/employee/PermitPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, adminOnly }: { component: React.ComponentType, adminOnly?: boolean }) {
@@ -83,6 +85,9 @@ function Router() {
       <Route path="/admin/swaps">
         <ProtectedRoute component={ShiftSwapApprovalPage} adminOnly />
       </Route>
+      <Route path="/admin/permits">
+        <ProtectedRoute component={PermitManagementPage} adminOnly />
+      </Route>
 
       {/* Employee & Shared Routes */}
       <Route path="/">
@@ -96,6 +101,9 @@ function Router() {
       </Route>
       <Route path="/info">
         <ProtectedRoute component={EmployeeInfo} />
+      </Route>
+      <Route path="/permits">
+        <ProtectedRoute component={PermitPage} />
       </Route>
 
       <Route component={NotFound} />

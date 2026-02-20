@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, Info, ArrowLeftRight } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Info, ArrowLeftRight, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocation, Link } from "wouter";
 
@@ -9,6 +9,7 @@ export function BottomNav() {
     { href: "/", label: "Absensi", icon: LayoutDashboard },
     { href: "/recap", label: "Rekap", icon: CalendarDays },
     { href: "/shift-swap", label: "Tukar", icon: ArrowLeftRight },
+    { href: "/permits", label: "Izin", icon: FileText },
     { href: "/info", label: "Info", icon: Info },
   ];
 
