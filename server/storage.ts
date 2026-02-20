@@ -2,7 +2,8 @@ import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
   users, attendance, announcements,
   shiftSwaps, ShiftSwap, InsertShiftSwap,
-  piketSchedules, PiketSchedule, InsertPiketSchedule
+  piketSchedules, PiketSchedule, InsertPiketSchedule,
+  permits, Permit, InsertPermit
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
@@ -208,7 +209,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrUpdatePiketSchedule(schedule: InsertPiketSchedule): Promise<PiketSchedule> {
-    const existing = await db.select().from(piketSchedules).where(eq(piketSchedules.date, schedule.date));
+    // For dual piket, we check if this specific user is already assigned to this date
+    const existing = await db.select().from(piketSchedules).where(
+      and(
+        eq(piketSchedules.date, schedule.date),
+        eq(piketSchedules.userId, schedule.userId)
+      )
+    );
+
     if (existing.length > 0) {
       await db.update(piketSchedules).set(schedule).where(eq(piketSchedules.id, existing[0].id));
       return { ...existing[0], ...schedule };
@@ -216,6 +224,30 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.insert(piketSchedules).values(schedule);
     const [created] = await db.select().from(piketSchedules).where(eq(piketSchedules.id, result.insertId));
     return created;
+  }
+
+  async deletePiketSchedule(id: number): Promise<void> {
+    await db.delete(piketSchedules).where(eq(piketSchedules.id, id));
+  }
+
+  // Permit Methods
+  async createPermit(insertPermit: InsertPermit & { userId: number }): Promise<Permit> {
+    const [result] = await db.insert(permits).values(insertPermit);
+    const [record] = await db.select().from(permits).where(eq(permits.id, result.insertId));
+    return record!;
+  }
+
+  async getPermits(userId?: number): Promise<Permit[]> {
+    if (userId) {
+      return await db.select().from(permits).where(eq(permits.userId, userId)).orderBy(desc(permits.createdAt));
+    }
+    return await db.select().from(permits).orderBy(desc(permits.createdAt));
+  }
+
+  async updatePermitStatus(id: number, status: "approved" | "rejected"): Promise<Permit> {
+    await db.update(permits).set({ status }).where(eq(permits.id, id));
+    const [record] = await db.select().from(permits).where(eq(permits.id, id));
+    return record!;
   }
 }
 
@@ -255,4 +287,10 @@ export interface IStorage {
   // Piket Schedules
   getPiketSchedules(monthStr?: string): Promise<PiketSchedule[]>;
   createOrUpdatePiketSchedule(schedule: InsertPiketSchedule): Promise<PiketSchedule>;
+  deletePiketSchedule(id: number): Promise<void>;
+
+  // Permits
+  createPermit(permit: InsertPermit & { userId: number }): Promise<Permit>;
+  getPermits(userId?: number): Promise<Permit[]>;
+  updatePermitStatus(id: number, status: "approved" | "rejected"): Promise<Permit>;
 }

@@ -74,8 +74,20 @@ export const shiftSwaps = mysqlTable("shift_swaps", {
 export const piketSchedules = mysqlTable("piket_schedules", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),
-  date: date("date").notNull().unique(), // One piket per day? Or unique for user+date?
+  date: date("date").notNull(), // Removed unique() to allow multiple users per day
   notes: text("notes"),
+});
+
+export const permits = mysqlTable("permits", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  type: mysqlEnum("type", ["Sakit", "Izin", "Cuti", "Lainnya"]).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  reason: text("reason").notNull(),
+  attachmentUrl: varchar("attachment_url", { length: 512 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
@@ -118,6 +130,13 @@ export const piketSchedulesRelations = relations(piketSchedules, ({ one }) => ({
   }),
 }));
 
+export const permitsRelations = relations(permits, ({ one }) => ({
+  user: one(users, {
+    fields: [permits.userId],
+    references: [users.id],
+  }),
+}));
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
@@ -137,3 +156,7 @@ export type InsertShiftSwap = z.infer<typeof insertShiftSwapSchema>;
 export const insertPiketScheduleSchema = createInsertSchema(piketSchedules).omit({ id: true });
 export type PiketSchedule = typeof piketSchedules.$inferSelect;
 export type InsertPiketSchedule = z.infer<typeof insertPiketScheduleSchema>;
+
+export const insertPermitSchema = createInsertSchema(permits).omit({ id: true, createdAt: true, status: true });
+export type Permit = typeof permits.$inferSelect;
+export type InsertPermit = z.infer<typeof insertPermitSchema>;

@@ -699,6 +699,7 @@ export async function registerRoutes(
     try {
       const { userId, date, notes } = req.body;
       console.log(`[API] Saving piket: userId=${userId}, date=${date}`);
+
       const schedule = await storage.createOrUpdatePiketSchedule({
         userId: parseInt(userId),
         date,
@@ -708,6 +709,71 @@ export async function registerRoutes(
     } catch (e) {
       console.error("[API] post /api/admin/piket-schedules error:", e);
       res.status(500).json({ message: "Failed to save schedule", details: (e as Error).message });
+    }
+  });
+
+  app.delete("/api/admin/piket-schedules/:id", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      await storage.deletePiketSchedule(parseInt(req.params.id));
+      res.sendStatus(204);
+    } catch (e) {
+      console.error("[API] delete /api/admin/piket-schedules error:", e);
+      res.status(500).json({ message: "Gagal menghapus jadwal piket" });
+    }
+  });
+
+  // Permit Routes
+  app.get("/api/permits", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const list = await storage.getPermits(req.user!.id);
+      res.json(list);
+    } catch (e) {
+      res.status(500).json({ message: "Gagal mengambil data izin" });
+    }
+  });
+
+  app.post("/api/permits", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { type, startDate, endDate, reason, attachmentUrl } = req.body;
+      const permit = await storage.createPermit({
+        userId: req.user!.id,
+        type,
+        startDate,
+        endDate,
+        reason,
+        attachmentUrl
+      });
+      res.status(201).json(permit);
+    } catch (e) {
+      console.error("[API] post /api/permits error:", e);
+      res.status(500).json({ message: "Gagal mengajukan izin" });
+    }
+  });
+
+  app.get("/api/admin/permits", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const list = await storage.getPermits();
+      res.json(list);
+    } catch (e) {
+      res.status(500).json({ message: "Gagal mengambil semua data izin" });
+    }
+  });
+
+  app.patch("/api/admin/permits/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const { status } = req.body;
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Status tidak valid" });
+      }
+      const permit = await storage.updatePermitStatus(parseInt(req.params.id), status);
+      res.json(permit);
+    } catch (e) {
+      res.status(500).json({ message: "Gagal update status izin" });
     }
   });
 

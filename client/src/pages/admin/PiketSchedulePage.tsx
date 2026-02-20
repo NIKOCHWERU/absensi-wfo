@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from "date-fns";
 import { id } from "date-fns/locale";
 import { useState } from "react";
-import { Loader2, ChevronLeft, ChevronRight, UserPlus, Calendar as CalendarIcon, Save } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, UserPlus, Calendar as CalendarIcon, Save, Trash2, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +45,19 @@ export default function PiketSchedulePage() {
             queryClient.invalidateQueries({ queryKey: ["/api/admin/piket-schedules", monthStr] });
             toast({ title: "Berhasil", description: "Jadwal piket diperbarui" });
             setSelectedDate(null);
+        },
+        onError: (err: any) => {
+            toast({ title: "Gagal", description: err.message, variant: "destructive" });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            await apiRequest("DELETE", `/api/admin/piket-schedules/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/piket-schedules", monthStr] });
+            toast({ title: "Berhasil", description: "Jadwal piket dihapus" });
         },
         onError: (err: any) => {
             toast({ title: "Gagal", description: err.message, variant: "destructive" });
@@ -123,7 +136,7 @@ export default function PiketSchedulePage() {
                                         `}
                                                 onClick={() => {
                                                     setSelectedDate(day);
-                                                    setSelectedUserId(schedule?.userId.toString() || "");
+                                                    setSelectedUserId("");
                                                 }}
                                             >
                                                 <div className="flex justify-between items-start">
@@ -134,17 +147,21 @@ export default function PiketSchedulePage() {
                                                     </span>
                                                 </div>
 
-                                                {assignedUser ? (
-                                                    <div className="bg-primary/10 p-2 rounded-xl flex items-center gap-2 border border-primary/20">
-                                                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-white font-bold">
-                                                            {assignedUser.fullName.charAt(0)}
+                                                {schedules?.filter(s => isSameDay(new Date(s.date), day)).map(schedule => {
+                                                    const assignedUser = employees.find(u => u.id === schedule.userId);
+                                                    if (!assignedUser) return null;
+                                                    return (
+                                                        <div key={schedule.id} className="bg-primary/10 p-1.5 rounded-xl flex items-center gap-2 border border-primary/20">
+                                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] text-white font-bold shrink-0">
+                                                                {assignedUser.fullName.charAt(0)}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[9px] font-bold text-primary truncate leading-tight">{assignedUser.fullName}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[10px] font-bold text-primary truncate leading-tight">{assignedUser.fullName}</p>
-                                                            <p className="text-[8px] text-primary/60 font-mono">{assignedUser.nik}</p>
-                                                        </div>
-                                                    </div>
-                                                ) : (
+                                                    );
+                                                })}
+                                                {!schedules?.some(s => isSameDay(new Date(s.date), day)) && (
                                                     <div className="flex-1 flex items-center justify-center">
                                                         <UserPlus className="w-4 h-4 text-gray-200 group-hover:text-primary/30" />
                                                     </div>
@@ -174,37 +191,71 @@ export default function PiketSchedulePage() {
                                             <p className="font-bold text-gray-800">{format(selectedDate, "EEEE, d MMMM yyyy", { locale: id })}</p>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Karyawan Piket</label>
-                                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                                <SelectTrigger className="h-12 rounded-xl">
-                                                    <SelectValue placeholder="Pilih Karyawan" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">Hapus Penugasan</SelectItem>
-                                                    {employees.map(emp => (
-                                                        <SelectItem key={emp.id} value={emp.id.toString()}>{emp.fullName}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Karyawan Terpilih</label>
+                                                <div className="space-y-2">
+                                                    {schedules?.filter(s => isSameDay(new Date(s.date), selectedDate)).map(s => {
+                                                        const user = employees.find(u => u.id === s.userId);
+                                                        return (
+                                                            <div key={s.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                                        {user?.fullName.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-bold">{user?.fullName}</p>
+                                                                        <p className="text-[10px] text-muted-foreground font-mono">{user?.nik}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                                    onClick={() => deleteMutation.mutate(s.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {schedules?.filter(s => isSameDay(new Date(s.date), selectedDate)).length === 0 && (
+                                                        <div className="text-center py-4 border-2 border-dashed border-gray-100 rounded-2xl">
+                                                            <p className="text-xs text-muted-foreground">Belum ada penugasan</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Tambah Penugasan</label>
+                                                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                                                    <SelectTrigger className="h-12 rounded-xl">
+                                                        <SelectValue placeholder="Pilih Karyawan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {employees.map(emp => (
+                                                            <SelectItem key={emp.id} value={emp.id.toString()}>{emp.fullName}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
 
                                         <Button
                                             className="w-full h-12 rounded-2xl font-bold"
                                             onClick={() => {
-                                                if (selectedUserId === "none") {
-                                                    // Handle delete logic? For now let's just use 0 or skip
-                                                    return;
-                                                }
+                                                if (!selectedUserId) return;
                                                 saveMutation.mutate({
                                                     userId: parseInt(selectedUserId),
                                                     date: format(selectedDate, "yyyy-MM-dd")
                                                 });
+                                                setSelectedUserId(""); // Reset after mut
                                             }}
                                             disabled={saveMutation.isPending || !selectedUserId}
                                         >
                                             {saveMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                                            Simpan Jadwal
+                                            Tambah & Simpan
                                         </Button>
 
                                         <p className="text-[10px] text-center text-muted-foreground italic">
