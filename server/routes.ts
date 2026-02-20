@@ -698,6 +698,7 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
     try {
       const { userId, date, notes } = req.body;
+      console.log(`[API] Saving piket: userId=${userId}, date=${date}`);
       const schedule = await storage.createOrUpdatePiketSchedule({
         userId: parseInt(userId),
         date,
@@ -705,8 +706,8 @@ export async function registerRoutes(
       });
       res.status(201).json(schedule);
     } catch (e) {
-      console.error(e);
-      res.status(500).json({ message: "Failed to save schedule" });
+      console.error("[API] post /api/admin/piket-schedules error:", e);
+      res.status(500).json({ message: "Failed to save schedule", details: (e as Error).message });
     }
   });
 
