@@ -567,89 +567,87 @@ export async function registerRoutes(
   app.delete("/api/announcements/:id", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
 
-    // We need to implement deleteAnnouncement in storage first, but for now let's do direct DB delete if possible 
-    // or assume storage.deleteAnnouncement exists (it doesn't yet).
-    // I will need to update storage.ts first! 
-    // Wait, I can't update TWO files in one replace_file_content.
-    // So I will update storage.ts in NEXT step.
-    // For now, I will add the route and it will fail if method missing. 
-    // Actually, I can use db directly here if I import db?
-    // No, let's stick to storage pattern. I will add stor    } catch (e) {
-    console.error(e);
-    res.sendStatus(500);
-  }
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      await storage.deleteAnnouncement(id);
+      res.sendStatus(204);
+    } catch (e) {
+      console.error(e);
+      res.sendStatus(500);
+    }
   });
 
-// --- Shift Swap Routes ---
+  // --- Shift Swap Routes ---
 
-app.post("/api/shift-swaps", async (req, res) => {
-  if (!req.isAuthenticated()) return res.sendStatus(401);
+  app.post("/api/shift-swaps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
 
-  try {
-    // Validate input manually or use schema
-    const { targetUserId, date, reason } = req.body;
-    if (!date || !reason) {
-      return res.status(400).json({ message: "Date and Reason are required" });
+    try {
+      // Validate input manually or use schema
+      const { targetUserId, date, reason } = req.body;
+      if (!date || !reason) {
+        return res.status(400).json({ message: "Date and Reason are required" });
+      }
+
+      const swap = await storage.createShiftSwap({
+        requesterId: req.user!.id,
+        targetUserId: targetUserId ? parseInt(targetUserId) : null, // Optional target?
+        date: date, // YYYY-MM-DD
+        reason: reason,
+        status: 'pending'
+      });
+      res.status(201).json(swap);
+    } catch (e) {
+      console.error("Shift Swap Create Error:", e);
+      res.status(500).json({ message: "Failed to create request" });
     }
+  });
 
-    const swap = await storage.createShiftSwap({
-      requesterId: req.user!.id,
-      targetUserId: targetUserId ? parseInt(targetUserId) : null, // Optional target?
-      date: date, // YYYY-MM-DD
-      reason: reason,
-      status: 'pending'
-    });
-    res.status(201).json(swap);
-  } catch (e) {
-    console.error("Shift Swap Create Error:", e);
-    res.status(500).json({ message: "Failed to create request" });
-  }
-});
+  app.get("/api/shift-swaps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
 
-app.get("/api/shift-swaps", async (req, res) => {
-  if (!req.isAuthenticated()) return res.sendStatus(401);
-
-  try {
-    // If admin, maybe see all? For now, let's just see mine (requested or received)
-    // Or if admin, see all.
-    const userId = req.user!.role === 'admin' ? undefined : req.user!.id;
-    const swaps = await storage.getShiftSwaps(userId);
-    res.json(swaps);
-  } catch (e) {
-    console.error("Shift Swap List Error:", e);
-    res.status(500).json({ message: "Failed to fetch requests" });
-  }
-});
-
-app.patch("/api/shift-swaps/:id", async (req, res) => {
-  if (!req.isAuthenticated()) return res.sendStatus(401);
-
-  // Only target user or Admin can approve/reject?
-  // For now, let's allow Admin or Target User.
-
-  try {
-    const id = parseInt(req.params.id);
-    const { status } = req.body; // 'approved' | 'rejected'
-
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+    try {
+      // If admin, maybe see all? For now, let's just see mine (requested or received)
+      // Or if admin, see all.
+      const userId = req.user!.role === 'admin' ? undefined : req.user!.id;
+      const swaps = await storage.getShiftSwaps(userId);
+      res.json(swaps);
+    } catch (e) {
+      console.error("Shift Swap List Error:", e);
+      res.status(500).json({ message: "Failed to fetch requests" });
     }
+  });
 
-    const swap = await storage.getShiftSwapById(id);
-    if (!swap) return res.sendStatus(404);
+  app.patch("/api/shift-swaps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    // Authorization check
-    if (req.user!.role !== 'admin' && req.user!.id !== swap.targetUserId) {
-      return res.status(403).json({ message: "Not authorized to update this request" });
+    // Only target user or Admin can approve/reject?
+    // For now, let's allow Admin or Target User.
+
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body; // 'approved' | 'rejected'
+
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const swap = await storage.getShiftSwapById(id);
+      if (!swap) return res.sendStatus(404);
+
+      // Authorization check
+      if (req.user!.role !== 'admin' && req.user!.id !== swap.targetUserId) {
+        return res.status(403).json({ message: "Not authorized to update this request" });
+      }
+
+      const updated = await storage.updateShiftSwapStatus(id, status);
+      res.json(updated);
+    } catch (e) {
+      console.error("Shift Swap Update Error:", e);
+      res.status(500).json({ message: "Failed to update request" });
     }
+  });
 
-    const updated = await storage.updateShiftSwapStatus(id, status);
-    res.json(updated);
-  } catch (e) {
-    console.error("Shift Swap Update Error:", e);
-    res.status(500).json({ message: "Failed to update request" });
-  }
-});
-
-return httpServer;
+  return httpServer;
 }
