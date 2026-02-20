@@ -28,6 +28,10 @@ export default function PiketSchedulePage() {
         queryKey: ["/api/admin/piket-schedules", monthStr],
         queryFn: async () => {
             const res = await fetch(`/api/admin/piket-schedules?month=${monthStr}`);
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Gagal mengambil data piket");
+            }
             return res.json();
         }
     });
