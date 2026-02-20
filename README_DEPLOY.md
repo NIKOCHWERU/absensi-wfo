@@ -8,16 +8,18 @@ ssh kantor@43.128.84.174
 # Password: NIKO1234
 ```
 
-## 2. Navigate to your app directory
-Assuming the app is cloned in `~/absensi-wfo` or you need to clone it:
-```bash
-# If new:
-git clone https://github.com/NIKOCHWERU/absensi-wfo.git
-cd absensi-wfo
+## 2. Setup Folder and Clone Repository
+Run these commands to create the folder and clone the project:
 
-# If existing:
-cd /path/to/absensi-wfo
-git pull origin main
+```bash
+# Create folder (if using /var/www)
+sudo mkdir -p /var/www/absensi-wfo
+sudo chown kantor:kantor /var/www/absensi-wfo
+
+# Go to folder and clone
+cd /var/www
+git clone https://github.com/NIKOCHWERU/absensi-wfo.git absensi-wfo
+cd absensi-wfo
 ```
 
 3. Configure Environment Variables
