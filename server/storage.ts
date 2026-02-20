@@ -5,7 +5,7 @@ import {
   shiftSwaps, ShiftSwap, InsertShiftSwap
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
 import session from "express-session";
 import MySQLSessionStore from "express-mysql-session";
 import { poolConnection } from "./db";
@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     // Get all sessions for a user on a specific date
     const records = await db.select()
       .from(attendance)
-      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`))
+      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `))
       .orderBy(attendance.sessionNumber);
     return records;
   }
