@@ -173,9 +173,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateShiftSwapStatus(id: number, status: 'approved' | 'rejected'): Promise<ShiftSwap> {
+    const swap = await this.getShiftSwapById(id);
+    if (!swap) throw new Error("Swap request not found");
+
+    if (status === 'approved' && swap.status !== 'approved') {
+      // Automate the swap in piket_schedules
+      const reqSchedule = await db.select().from(piketSchedules)
+        .where(and(eq(piketSchedules.userId, swap.requesterId), eq(piketSchedules.date, swap.date)));
+
+      const targetSchedule = await db.select().from(piketSchedules)
+        .where(and(eq(piketSchedules.userId, swap.targetUserId), eq(piketSchedules.date, swap.targetDate)));
+
+      if (reqSchedule.length > 0) {
+        await db.update(piketSchedules).set({ userId: swap.targetUserId }).where(eq(piketSchedules.id, reqSchedule[0].id));
+      }
+      if (targetSchedule.length > 0) {
+        await db.update(piketSchedules).set({ userId: swap.requesterId }).where(eq(piketSchedules.id, targetSchedule[0].id));
+      }
+    }
+
     await db.update(shiftSwaps).set({ status }).where(eq(shiftSwaps.id, id));
     const [updated] = await db.select().from(shiftSwaps).where(eq(shiftSwaps.id, id));
     return updated;
+  }
+
+  // Piket Schedule Methods
+  async getPiketSchedules(monthStr?: string): Promise<PiketSchedule[]> {
+    if (monthStr) {
+      // Simple string comparison for YYYY-MM
+      return db.select().from(piketSchedules).where(sql`DATE_FORMAT(${piketSchedules.date}, '%Y-%m') = ${monthStr}`);
+    }
+    return db.select().from(piketSchedules);
+  }
+
+  async createOrUpdatePiketSchedule(schedule: InsertPiketSchedule): Promise<PiketSchedule> {
+    const existing = await db.select().from(piketSchedules).where(eq(piketSchedules.date, schedule.date));
+    if (existing.length > 0) {
+      await db.update(piketSchedules).set(schedule).where(eq(piketSchedules.id, existing[0].id));
+      return { ...existing[0], ...schedule };
+    }
+    const [result] = await db.insert(piketSchedules).values(schedule);
+    const [created] = await db.select().from(piketSchedules).where(eq(piketSchedules.id, result.insertId));
+    return created;
   }
 }
 
@@ -211,4 +250,8 @@ export interface IStorage {
   getShiftSwaps(userId?: number): Promise<ShiftSwap[]>;
   getShiftSwapById(id: number): Promise<ShiftSwap | undefined>;
   updateShiftSwapStatus(id: number, status: 'approved' | 'rejected'): Promise<ShiftSwap>;
+
+  // Piket Schedules
+  getPiketSchedules(monthStr?: string): Promise<PiketSchedule[]>;
+  createOrUpdatePiketSchedule(schedule: InsertPiketSchedule): Promise<PiketSchedule>;
 }

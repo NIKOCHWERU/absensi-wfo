@@ -15,8 +15,11 @@ import EmployeeInfo from "@/pages/employee/InfoPage";
 import AdminDashboard from "@/pages/admin/DashboardPage";
 import AdminEmployeeList from "@/pages/admin/EmployeeListPage";
 import AttendanceSummaryPage from "@/pages/admin/AttendanceSummaryPage";
-import AdminRecap from "@/pages/admin/RecapPage"; 
+import AdminRecap from "@/pages/admin/RecapPage";
 import InfoBoardPage from "@/pages/admin/InfoBoardPage";
+import PiketSchedulePage from "@/pages/admin/PiketSchedulePage";
+import ShiftSwapApprovalPage from "@/pages/admin/ShiftSwapApprovalPage";
+import ShiftSwapPage from "@/pages/employee/ShiftSwapPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, adminOnly }: { component: React.ComponentType, adminOnly?: boolean }) {
@@ -57,7 +60,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      
+
       {/* Admin Routes */}
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} adminOnly />
@@ -74,6 +77,12 @@ function Router() {
       <Route path="/admin/info-board">
         <ProtectedRoute component={InfoBoardPage} adminOnly />
       </Route>
+      <Route path="/admin/piket">
+        <ProtectedRoute component={PiketSchedulePage} adminOnly />
+      </Route>
+      <Route path="/admin/swaps">
+        <ProtectedRoute component={ShiftSwapApprovalPage} adminOnly />
+      </Route>
 
       {/* Employee & Shared Routes */}
       <Route path="/">
@@ -82,10 +91,13 @@ function Router() {
       <Route path="/recap">
         <ProtectedRoute component={EmployeeRecap} />
       </Route>
+      <Route path="/shift-swap">
+        <ProtectedRoute component={ShiftSwapPage} />
+      </Route>
       <Route path="/info">
         <ProtectedRoute component={EmployeeInfo} />
       </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );

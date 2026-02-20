@@ -63,11 +63,19 @@ export const announcements = mysqlTable("announcements", {
 export const shiftSwaps = mysqlTable("shift_swaps", {
   id: int("id").primaryKey().autoincrement(),
   requesterId: int("requester_id").notNull(),
-  targetUserId: int("target_user_id"), // Can be null if open swap? For now let's say target specific user.
-  date: date("date").notNull(), // The date of the shift to swap
+  targetUserId: int("target_user_id").notNull(),
+  date: date("date").notNull(), // The date requester wants to swap
+  targetDate: date("target_date").notNull(), // The date target user has piket (optional, but requested for "swap")
   reason: text("reason").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const piketSchedules = mysqlTable("piket_schedules", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  date: date("date").notNull().unique(), // One piket per day? Or unique for user+date?
+  notes: text("notes"),
 });
 
 // Relations
@@ -103,6 +111,13 @@ export const shiftSwapsRelations = relations(shiftSwaps, ({ one }) => ({
   }),
 }));
 
+export const piketSchedulesRelations = relations(piketSchedules, ({ one }) => ({
+  user: one(users, {
+    fields: [piketSchedules.userId],
+    references: [users.id],
+  }),
+}));
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
@@ -118,3 +133,7 @@ export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export const insertShiftSwapSchema = createInsertSchema(shiftSwaps).omit({ id: true, createdAt: true, status: true });
 export type ShiftSwap = typeof shiftSwaps.$inferSelect;
 export type InsertShiftSwap = z.infer<typeof insertShiftSwapSchema>;
+
+export const insertPiketScheduleSchema = createInsertSchema(piketSchedules).omit({ id: true });
+export type PiketSchedule = typeof piketSchedules.$inferSelect;
+export type InsertPiketSchedule = z.infer<typeof insertPiketScheduleSchema>;

@@ -116,33 +116,56 @@ export async function registerRoutes(
       const timeInMinutes = hour * 60 + minute;
       const dayOfWeek = jakartaTime.getDay(); // 0 = Sunday, 6 = Saturday
 
+      // Indonesian Public Holidays 2026 (simplified)
+      const holidaysString = [
+        "2026-01-01", // Tahun Baru
+        "2026-01-29", // Tahun Baru Imlek
+        "2026-02-16", // Isra Mikraj
+        "2026-03-20", // Hari Suci Nyepi
+        "2026-04-03", // Wafat Isa Almasih
+        "2026-04-05", // Hari Paskah
+        "2026-04-30", // Hari Raya Idul Fitri
+        "2026-05-01", // Hari Buruh
+        "2026-05-21", // Hari Kenaikan Isa Almasih
+        "2026-05-22", // Hari Raya Waisak
+        "2026-06-01", // Hari Lahir Pancasila
+        "2026-06-06", // Idul Adha
+        "2026-07-06", // Tahun Baru Islam
+        "2026-08-17", // Hari Kemerdekaan RI
+        "2026-09-14", // Maulid Nabi Muhammad
+        "2026-12-25", // Hari Raya Natal
+      ];
+
       let status = "present";
       let isOvertime = false;
       let notes = "";
 
       // Holiday / Weekend Logic
-      // 0 (Sun) or 6 (Sat)
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        isOvertime = true;
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isHoliday = holidaysString.includes(today);
+
+      // --- Piket Schedule Check ---
+      const schedule = await storage.getPiketSchedules(today.substring(0, 7));
+      const myPiketToday = schedule.find(s => s.userId === userId && s.date === today);
+
+      let finalShiftType = shiftType || (myPiketToday ? 'Piket' : 'Regular');
+
+      if (isWeekend || isHoliday) {
         status = "overtime";
-        notes = "Lembur Hari Libur";
+        isOvertime = true;
+        notes = isHoliday ? "Hari Libur Nasional" : "Hari Libur Pekan";
       } else {
         // Normal Day Logic
-        // Default deadline
-        let deadlineMinutes = 8 * 60 + 30; // 08:30 (510 min)
+        let deadlineMinutes = 8 * 60 + 30; // 08:30 Default
 
-        if (shiftType === 'Piket') {
-          deadlineMinutes = 8 * 60 + 15; // 08:15 (495 min)
+        if (finalShiftType === 'Piket') {
+          deadlineMinutes = 8 * 60 + 15; // 08:15 for Piket
         }
 
         if (timeInMinutes > deadlineMinutes) {
           status = "late";
         }
       }
-
-      // Special Overtime (Malam) Check?
-      // "jika masuk artinya OT / Lembur" -> Context: "kalau masuk... (libur) ... artinya OT"
-      // "jika selesai absen jam 5, laaanjut sesi Overtime... ulangi sesi absen" -> This is for 'resume' route.
 
       const attendance = await storage.createAttendance({
         userId,
@@ -152,7 +175,7 @@ export async function registerRoutes(
         checkInPhoto: photoFileId,
         checkInLocation: location,
         shift: shift,
-        shiftType: shiftType,
+        shiftType: finalShiftType,
         isOvertime: isOvertime,
         sessionNumber: nextSessionNumber,
         notes: notes
@@ -303,10 +326,22 @@ export async function registerRoutes(
     let notes = `Sesi ke-${nextSessionNumber}`;
 
     // Overtime Logic for Resume
-    if (hour >= 17) {
+    const dayOfWeek = jakartaTime.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Indonesian Public Holidays 2026 (simplified)
+    const holidaysString = [
+      "2026-01-01", "2026-01-29", "2026-02-16", "2026-03-20",
+      "2026-04-03", "2026-04-05", "2026-04-30", "2026-05-01",
+      "2026-05-21", "2026-05-22", "2026-06-01", "2026-06-06",
+      "2026-07-06", "2026-08-17", "2026-09-14", "2026-12-25",
+    ];
+    const isHoliday = holidaysString.includes(today);
+
+    if (hour >= 17 || isWeekend || isHoliday) {
       status = "overtime";
       isOvertime = true;
-      notes = `Lembur (Sesi ${nextSessionNumber})`;
+      notes = `Overtime (Sesi ${nextSessionNumber})`;
     }
 
     // Create new attendance session
@@ -584,23 +619,22 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      // Validate input manually or use schema
-      const { targetUserId, date, reason } = req.body;
-      if (!date || !reason) {
-        return res.status(400).json({ message: "Date and Reason are required" });
+      const { targetUserId, date, targetDate, reason } = req.body;
+      if (!date || !targetDate || !reason || !targetUserId) {
+        return res.status(400).json({ message: "Lengkapi data pengajuan tukar piket" });
       }
 
       const swap = await storage.createShiftSwap({
         requesterId: req.user!.id,
-        targetUserId: targetUserId ? parseInt(targetUserId) : null, // Optional target?
+        targetUserId: parseInt(targetUserId),
         date: date, // YYYY-MM-DD
+        targetDate: targetDate, // YYYY-MM-DD
         reason: reason,
-        status: 'pending'
       });
       res.status(201).json(swap);
     } catch (e) {
       console.error("Shift Swap Create Error:", e);
-      res.status(500).json({ message: "Failed to create request" });
+      res.status(500).json({ message: "Gagal membuat pengajuan tukar piket" });
     }
   });
 
@@ -622,9 +656,6 @@ export async function registerRoutes(
   app.patch("/api/shift-swaps/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    // Only target user or Admin can approve/reject?
-    // For now, let's allow Admin or Target User.
-
     try {
       const id = parseInt(req.params.id);
       const { status } = req.body; // 'approved' | 'rejected'
@@ -636,7 +667,7 @@ export async function registerRoutes(
       const swap = await storage.getShiftSwapById(id);
       if (!swap) return res.sendStatus(404);
 
-      // Authorization check
+      // Only Admin or Target User can approve/reject
       if (req.user!.role !== 'admin' && req.user!.id !== swap.targetUserId) {
         return res.status(403).json({ message: "Not authorized to update this request" });
       }
@@ -647,6 +678,38 @@ export async function registerRoutes(
       console.error("Shift Swap Update Error:", e);
       res.status(500).json({ message: "Failed to update request" });
     }
+  });
+
+  // --- Piket Schedule Routes ---
+
+  app.get("/api/admin/piket-schedules", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    const month = req.query.month as string | undefined;
+    const list = await storage.getPiketSchedules(month);
+    res.json(list);
+  });
+
+  app.post("/api/admin/piket-schedules", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
+    try {
+      const { userId, date, notes } = req.body;
+      const schedule = await storage.createOrUpdatePiketSchedule({
+        userId: parseInt(userId),
+        date,
+        notes
+      });
+      res.status(201).json(schedule);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "Failed to save schedule" });
+    }
+  });
+
+  app.get("/api/piket-schedules", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const month = req.query.month as string | undefined;
+    const list = await storage.getPiketSchedules(month);
+    res.json(list);
   });
 
   return httpServer;

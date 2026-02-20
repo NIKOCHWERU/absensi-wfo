@@ -5,23 +5,28 @@ interface CompanyHeaderProps {
   logoUrl?: string;
 }
 
-export function CompanyHeader({ name = "Kantor NH PT ELOK JAYA ABADHI", logoUrl = "/logo.png" }: CompanyHeaderProps) {
+export function CompanyHeader({ name = "ABSENSI NH", logoUrl = "/logo.png" }: CompanyHeaderProps) {
   return (
-    <header className="bg-green-600 text-white shadow-lg pb-12 pt-6 px-6 rounded-b-[2.5rem]">
-      <div className="flex items-center justify-between max-w-4xl mx-auto">
+    <header className="bg-primary text-primary-foreground shadow-lg pb-12 pt-6 px-6 rounded-b-[2.5rem] relative overflow-hidden">
+      {/* Decorative Shine */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+      <div className="flex items-center justify-between max-w-4xl mx-auto relative z-10">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold font-display tracking-tight text-shadow-sm">
-            {name}
+          <h1 className="text-2xl md:text-3xl font-extrabold font-display tracking-tight text-shadow-sm uppercase">
+            ABSENSI NH
           </h1>
-          <p className="text-white/80 text-xs md:text-sm font-medium tracking-wide">
-            Absensi Management PT ELOK JAYA ABADHI
+          <p className="text-primary-foreground/90 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mt-0.5 opacity-80">
+            Professional Attendance System
           </p>
         </div>
-        <div className="w-16 h-16 md:w-18 md:h-18 bg-white rounded-2xl flex items-center justify-center border border-white/20 shadow-lg p-1">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl flex items-center justify-center border-2 border-primary/20 shadow-xl p-1 overflow-hidden">
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
           ) : (
-            <Building2 className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
+            <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-primary" />
+            </div>
           )}
         </div>
       </div>

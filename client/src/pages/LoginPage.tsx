@@ -40,21 +40,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        
-        <div className="text-center mb-8 space-y-2">
-          <div className="inline-flex p-4 bg-white rounded-2xl shadow-xl shadow-orange-500/10 mb-2">
-            <Building2 className="w-10 h-10 text-primary" />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative Gold Accents */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full -ml-32 -mb-32 blur-3xl"></div>
+
+      <div className="w-full max-w-md z-10">
+
+        <div className="text-center mb-8 space-y-4">
+          <div className="inline-flex p-1 bg-white rounded-full shadow-2xl shadow-primary/20 mb-2 border-2 border-primary/20">
+            <img src="/logo.png" alt="NH Logo" className="w-24 h-24 object-contain" />
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl text-gray-900 drop-shadow-sm">
-            Absensi Management
-          </h1>
-          <p className="text-muted-foreground font-medium uppercase tracking-wider">PT ELOK JAYA ABADHI</p>
+          <div className="space-y-1">
+            <h1 className="text-4xl font-extrabold tracking-tighter lg:text-5xl text-foreground drop-shadow-sm uppercase">
+              ABSENSI NH
+            </h1>
+            <p className="text-muted-foreground font-medium text-sm tracking-[0.2em] uppercase">Legal Excellence & Integrity</p>
+          </div>
         </div>
 
-        <LoginCard 
-          onSubmit={(v: any) => onSubmit(v)} 
+        <LoginCard
+          onSubmit={(v: any) => onSubmit(v)}
           isLoading={isLoggingIn}
           form={form}
           icon={<User className="w-4 h-4" />}
@@ -62,9 +68,9 @@ export default function LoginPage() {
           showPassword={showPassword}
           setShowPassword={setShowPassword}
         />
-        
+
         <p className="text-center text-xs text-muted-foreground mt-8 opacity-60">
-          &copy; {new Date().getFullYear()} PT ELOK JAYA ABADHI. Seluruh hak cipta dilindungi.
+          &copy; {new Date().getFullYear()} ABSENSI NH. Seluruh hak cipta dilindungi.
         </p>
       </div>
     </div>

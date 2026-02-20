@@ -17,7 +17,7 @@ export default function RecapPage() {
   const [weekDate, setWeekDate] = useState(new Date());
   const [selectedRecord, setSelectedRecord] = useState<Attendance | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Fetch for current display month (format YYYY-MM)
   const monthStr = format(currentDate, 'yyyy-MM');
   const { data: attendanceData, isLoading } = useAttendance().useMonthlyAttendance(monthStr, user?.id);
@@ -42,7 +42,7 @@ export default function RecapPage() {
   // Get filtered data based on view mode
   const filteredData = attendanceData?.filter(record => {
     if (viewMode === 'month') return true; // useMonthlyAttendance already gives 26th-25th
-    
+
     // For week view, filter current month's data by week boundary
     const date = new Date(record.date);
     const wStart = startOfWeek(weekDate, { weekStartsOn: 1 });
@@ -67,7 +67,7 @@ export default function RecapPage() {
       </div>
 
       <main className="px-4 max-w-lg mx-auto space-y-6">
-        
+
         {/* Calendar Card */}
         <div className="relative z-10">
           {isLoading ? (
@@ -75,11 +75,11 @@ export default function RecapPage() {
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           ) : (
-            <AttendanceCalendar 
-              currentDate={currentDate} 
-              onPrevMonth={handlePrev} 
-              onNextMonth={handleNext} 
-              attendanceData={attendanceData || []} 
+            <AttendanceCalendar
+              currentDate={currentDate}
+              onPrevMonth={handlePrev}
+              onNextMonth={handleNext}
+              attendanceData={attendanceData || []}
               onDateSelect={handleDateSelect}
               viewMode={viewMode}
               setViewMode={setViewMode}
@@ -116,8 +116,8 @@ export default function RecapPage() {
           </div>
           <div className="divide-y divide-border">
             {filteredData.map((record) => (
-              <div 
-                key={record.id} 
+              <div
+                key={record.id}
                 className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => handleDateSelect(new Date(record.date), record)}
               >
@@ -126,22 +126,21 @@ export default function RecapPage() {
                     {format(new Date(record.date), 'EEEE, dd MMM yyyy', { locale: id })}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'} 
+                    {record.checkIn ? format(new Date(record.checkIn), 'HH:mm') : '-'}
                     {' - '}
                     {record.checkOut ? format(new Date(record.checkOut), 'HH:mm') : '-'}
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
-                  record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                  record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                  record.status === 'absent' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
+                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                    record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                      record.status === 'absent' ? 'bg-red-100 text-red-700' :
+                        'bg-blue-100 text-blue-700'
+                  }`}>
                   {record.status === 'present' ? 'Hadir' :
-                   record.status === 'late' ? 'Telat' :
-                   record.status === 'sick' ? 'Sakit' :
-                   record.status === 'permission' ? 'Izin' :
-                   record.status === 'absent' ? 'Alpa' : record.status}
+                    record.status === 'late' ? 'Telat' :
+                      record.status === 'sick' ? 'Sakit' :
+                        record.status === 'permission' ? 'Izin' :
+                          record.status === 'absent' ? 'Alpa' : record.status}
                 </div>
               </div>
             ))}
@@ -158,82 +157,102 @@ export default function RecapPage() {
 
       {/* Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="rounded-3xl max-w-sm mx-auto">
-          <DialogHeader>
-            <DialogTitle className="text-center font-bold text-xl">Detail Absensi</DialogTitle>
-          </DialogHeader>
-          
+        <DialogContent className="rounded-3xl max-w-sm md:max-w-md mx-auto p-0 overflow-hidden border-none shadow-2xl">
           {selectedRecord && (
-            <div className="space-y-4 py-4">
-              <div className="text-center pb-2 border-b">
-                <p className="font-bold text-lg text-primary">
-                  {format(new Date(selectedRecord.date), 'EEEE, dd MMM yyyy', { locale: id })}
-                </p>
-                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  selectedRecord.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                  selectedRecord.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                  selectedRecord.status === 'absent' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {selectedRecord.status === 'present' ? 'Hadir' :
-                   selectedRecord.status === 'late' ? 'Telat' :
-                   selectedRecord.status === 'sick' ? 'Sakit' :
-                   selectedRecord.status === 'permission' ? 'Izin' :
-                   selectedRecord.status === 'absent' ? 'Alpa' : selectedRecord.status}
-                </span>
-                {selectedRecord.shift && (
-                    <p className="text-xs text-muted-foreground mt-2">Shift: <span className="font-bold">{selectedRecord.shift}</span></p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col h-full max-h-[90vh]">
+              {/* Modal Header */}
+              <div className="bg-primary p-6 text-white relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute right-4 top-4 text-white/50 hover:text-white hover:bg-white/10 rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" /> Masuk
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">Detail Kehadiran</p>
+                  <h3 className="text-xl font-bold">
+                    {format(new Date(selectedRecord.date), 'EEEE, dd MMM yyyy', { locale: id })}
+                  </h3>
+                  <div className="flex gap-2 mt-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-white/20 text-white' :
+                        selectedRecord.status === 'late' ? 'bg-red-500 text-white' :
+                          selectedRecord.status === 'overtime' ? 'bg-amber-400 text-white' :
+                            'bg-white/10 text-white/80'
+                      }`}>
+                      {selectedRecord.status === 'overtime' ? 'Overtime' :
+                        selectedRecord.status === 'present' ? 'Hadir' :
+                          selectedRecord.status === 'late' ? 'Telat' : selectedRecord.status}
+                    </span>
+                    {selectedRecord.sessionNumber > 1 && (
+                      <span className="bg-white/10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase text-white/80">
+                        Sesi {selectedRecord.sessionNumber}
+                      </span>
+                    )}
                   </div>
-                  <p className="font-mono font-bold text-lg">
-                    {selectedRecord.checkIn ? format(new Date(selectedRecord.checkIn), 'HH:mm') : '--:--'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground text-right justify-end">
-                    Pulang <LogOut className="w-3 h-3" />
-                  </div>
-                  <p className="font-mono font-bold text-lg text-right">
-                    {selectedRecord.checkOut ? format(new Date(selectedRecord.checkOut), 'HH:mm') : '--:--'}
-                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Coffee className="w-3 h-3" /> Istirahat
-                  </div>
-                  <p className="font-mono font-medium text-sm">
-                    {selectedRecord.breakStart ? format(new Date(selectedRecord.breakStart), 'HH:mm') : '--:--'}
-                  </p>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Photo Grid (Max 4 photos per session) */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Masuk', photo: selectedRecord.checkInPhoto },
+                    { label: 'Mulai Istirahat', photo: selectedRecord.breakStartPhoto },
+                    { label: 'Selesai Istirahat', photo: selectedRecord.breakEndPhoto },
+                    { label: 'Pulang', photo: selectedRecord.checkOutPhoto }
+                  ].map((item, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                      <div className="aspect-[3/4] rounded-xl bg-secondary border border-primary/10 overflow-hidden flex items-center justify-center relative">
+                        {item.photo ? (
+                          <img
+                            src={item.photo.startsWith('http') || item.photo.startsWith('/') ? item.photo : `/api/files/${item.photo}`}
+                            alt={item.label}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Camera className="w-6 h-6 text-primary/20" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground text-right justify-end">
-                    Selesai <Clock className="w-3 h-3" />
+
+                {/* Info List */}
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase">Waktu Masuk</p>
+                      <p className="font-mono font-bold text-lg text-foreground">
+                        {selectedRecord.checkIn ? format(new Date(selectedRecord.checkIn), 'HH:mm:ss') : '--:--'}
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase">Waktu Pulang</p>
+                      <p className="font-mono font-bold text-lg text-foreground">
+                        {selectedRecord.checkOut ? format(new Date(selectedRecord.checkOut), 'HH:mm:ss') : '--:--'}
+                      </p>
+                    </div>
                   </div>
-                  <p className="font-mono font-medium text-sm text-right">
-                    {selectedRecord.breakEnd ? format(new Date(selectedRecord.breakEnd), 'HH:mm') : '--:--'}
-                  </p>
+
+                  <div className="p-4 bg-secondary/50 rounded-2xl border border-primary/5 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Lokasi Masuk:</span>
+                      <span className="font-medium text-right truncate max-w-[150px]">{selectedRecord.checkInLocation || '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Catatan:</span>
+                      <span className="font-medium text-right italic">{selectedRecord.notes || '-'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {selectedRecord.notes && (
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mt-4">
-                  <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Catatan / Keterangan</p>
-                  <p className="text-sm text-gray-700 italic">{selectedRecord.notes}</p>
-                </div>
-              )}
-
-              <div className="pt-4">
-                <Button className="w-full rounded-xl" onClick={() => setIsModalOpen(false)}>
-                  Tutup
+              <div className="p-6 pt-2">
+                <Button className="w-full h-12 rounded-2xl font-bold" onClick={() => setIsModalOpen(false)}>
+                  Selesai
                 </Button>
               </div>
             </div>
