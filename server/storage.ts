@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     // Get all sessions for a user on a specific date
     const records = await db.select()
       .from(attendance)
-      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `))
+      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`))
       .orderBy(attendance.sessionNumber);
     return records;
   }
