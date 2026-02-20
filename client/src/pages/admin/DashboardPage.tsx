@@ -61,10 +61,10 @@ export default function AdminDashboard() {
             {/* Sidebar (Simple version for now) */}
             <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
                 <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                    <img src="/logo_elok_buah.jpg" alt="Logo" className="w-12 h-12 object-contain" />
+                    <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
                     <div>
-                        <h1 className="text-xl font-bold text-green-600">Admin Panel</h1>
-                        <p className="text-xs text-gray-400">PT ELOK JAYA ABADHI</p>
+                        <h1 className="text-xl font-bold text-primary italic lowercase"></h1>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">ABSENSI NH</p>
                     </div>
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
                     </Button>
                     <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left items-start whitespace-normal text-gray-600 hover:text-green-600 hover:bg-green-50" onClick={() => setLocation("/admin/attendance-summary")}>
                         <FileText className="mr-2 h-4 w-4 shrink-0 mt-1" />
-                        <span>Absensi Management PT ELOK JAYA ABADHI</span>
+                        <span>Manajemen Absensi NH</span>
                     </Button>
                 </nav>
                 <div className="p-4 border-t border-gray-100">

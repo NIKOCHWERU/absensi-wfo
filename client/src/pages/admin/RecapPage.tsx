@@ -214,7 +214,7 @@ export default function RecapPage() {
                     <div class="logo-section">
                         <div class="logo-placeholder">A</div>
                         <div class="company-info">
-                            <h1>PT ELOK JAYA ABADHI</h1>
+                            <h1>ABSENSI NH</h1>
                             <p>Sistem Manajemen Kehadiran Digital</p>
                         </div>
                     </div>
@@ -280,7 +280,7 @@ export default function RecapPage() {
                     <Button variant="ghost" size="icon" onClick={() => setLocation("/admin")}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management PT ELOK JAYA ABADHI</h1>
+                    <h1 className="text-xl font-bold text-gray-800">Rekap Absensi Management NH</h1>
                 </div>
                 <div className="flex items-center gap-2 bg-white border rounded-md p-1">
                     <Select value={reportType} onValueChange={(v: any) => setReportType(v)}>

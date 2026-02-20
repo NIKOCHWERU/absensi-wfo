@@ -151,7 +151,7 @@ export default function EmployeeDashboard() {
     const [isPiket, setIsPiket] = useState(false);
 
     const startAttendanceFlow = async (actionFn: (data: any) => Promise<any>, successTitle: string, requireShift = false) => {
-        // For PT ELOK JAYA ABADHI, we only use 'Management' shift.
+        // For ABSENSI NH, we only use 'Management' shift.
         if (requireShift) {
             const wrappedClockIn = async (data: any) => {
                 return clockIn({ ...data, shift: 'Management', shiftType: isPiket ? 'Piket' : 'Regular' });

@@ -62,7 +62,7 @@ export default function RecapPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-primary pt-10 pb-20 px-6 rounded-b-[2.5rem] shadow-lg mb-[-3rem]">
-        <h1 className="text-2xl font-bold text-white mb-1">Rekap Absensi PT ELOK JAYA ABADHI</h1>
+        <h1 className="text-2xl font-bold text-white mb-1">Rekap Absensi NH</h1>
         <p className="text-white/80 text-sm">Pantau kehadiran bulanan Anda</p>
       </div>
 
@@ -132,9 +132,9 @@ export default function RecapPage() {
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${record.status === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                    record.status === 'late' ? 'bg-amber-100 text-amber-700' :
-                      record.status === 'absent' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
+                  record.status === 'late' ? 'bg-amber-100 text-amber-700' :
+                    record.status === 'absent' ? 'bg-red-100 text-red-700' :
+                      'bg-blue-100 text-blue-700'
                   }`}>
                   {record.status === 'present' ? 'Hadir' :
                     record.status === 'late' ? 'Telat' :
@@ -177,9 +177,9 @@ export default function RecapPage() {
                   </h3>
                   <div className="flex gap-2 mt-2">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedRecord.status === 'present' ? 'bg-white/20 text-white' :
-                        selectedRecord.status === 'late' ? 'bg-red-500 text-white' :
-                          selectedRecord.status === 'overtime' ? 'bg-amber-400 text-white' :
-                            'bg-white/10 text-white/80'
+                      selectedRecord.status === 'late' ? 'bg-red-500 text-white' :
+                        selectedRecord.status === 'overtime' ? 'bg-amber-400 text-white' :
+                          'bg-white/10 text-white/80'
                       }`}>
                       {selectedRecord.status === 'overtime' ? 'Overtime' :
                         selectedRecord.status === 'present' ? 'Hadir' :
