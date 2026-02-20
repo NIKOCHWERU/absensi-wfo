@@ -1,4 +1,3 @@
-```typescript
 import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
   users, attendance, announcements,
@@ -41,9 +40,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // MySQL insert returns [ResultSetHeader], not the row. We need to fetch it back or use logic.
-    // Drizzle with mysql2: .insert().values().$returningId() can give ID.
-    // Then fetch.
     const [result] = await db.insert(users).values(insertUser);
     const id = result.insertId;
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -84,7 +80,7 @@ export class DatabaseStorage implements IStorage {
     // date here is string YYYY-MM-DD
     const [record] = await db.select()
       .from(attendance)
-      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `));
+      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`));
     return record;
   }
 
@@ -92,7 +88,7 @@ export class DatabaseStorage implements IStorage {
     // Get all sessions for a user on a specific date
     const records = await db.select()
       .from(attendance)
-      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `))
+      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`))
       .orderBy(attendance.sessionNumber);
     return records;
   }
@@ -124,10 +120,10 @@ export class DatabaseStorage implements IStorage {
         startMonth = 12;
         startYear -= 1;
       }
-      const startDate = `${ startYear } -${ String(startMonth).padStart(2, '0') } -26`;
+      const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-26`;
 
       // Calculate end date: 25th of current month
-      const endDate = `${ year } -${ String(month).padStart(2, '0') } -25`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-25`;
 
       conditions.push(gte(attendance.date, new Date(startDate)));
       conditions.push(lte(attendance.date, new Date(endDate)));
@@ -151,6 +147,7 @@ export class DatabaseStorage implements IStorage {
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
+
   // Shift Swap Methods
   async createShiftSwap(swap: InsertShiftSwap): Promise<ShiftSwap> {
     const [result] = await db.insert(shiftSwaps).values(swap);
@@ -208,7 +205,7 @@ export interface IStorage {
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(): Promise<Announcement[]>;
   deleteAnnouncement(id: number): Promise<void>;
-  
+
   // Shift Swaps
   createShiftSwap(swap: InsertShiftSwap): Promise<ShiftSwap>;
   getShiftSwaps(userId?: number): Promise<ShiftSwap[]>;
