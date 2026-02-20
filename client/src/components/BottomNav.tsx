@@ -1,5 +1,6 @@
 import { LayoutDashboard, CalendarDays, Info, ArrowLeftRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLocation, Link } from "wouter";
 
 export function BottomNav() {
   const [location] = useLocation();
