@@ -144,16 +144,17 @@ export default function EmployeeDashboard() {
           variant: "destructive" 
       });
   };
+  
+  const [isPiket, setIsPiket] = useState(false);
 
   const startAttendanceFlow = async (actionFn: (data: any) => Promise<any>, successTitle: string, requireShift = false) => {
-      // If requireShift is true and we don't have a shift selected yet (and user doesn't have one assigned), ask for it
-      // Actually per prompt, we need to ask every time "sebelum absen... popup pilihan Shift"
-      // But only for CLOCK IN.
-      
+      // For PT ELOK JAYA ABADHI, we only use 'Management' shift.
       if (requireShift) {
-          setIsShiftModalOpen(true);
-          // Store pending action to resume after shift select
-          // We can just use state to track we are in "Clock In" flow
+          const wrappedClockIn = async (data: any) => {
+              return clockIn({ ...data, shift: 'Management', shiftType: isPiket ? 'Piket' : 'Regular' });
+          };
+          setActiveAction({ fn: wrappedClockIn, successTitle, type: 'attendance' });
+          setIsCameraOpen(true);
           return;
       }
 
@@ -161,16 +162,7 @@ export default function EmployeeDashboard() {
       setIsCameraOpen(true);
   };
 
-  const handleShiftSelect = (shift: string) => {
-      if (confirm(`Apakah Anda yakin ingin lanjut sebagai ${shift}?`)) {
-          setSelectedShift(shift);
-          setIsShiftModalOpen(false);
-          const wrappedClockIn = async (data: any) => {
-              return clockIn({ ...data, shift: shift });
-          };
-          startAttendanceFlow(wrappedClockIn, "Berhasil Absen Masuk", false);
-      }
-  };
+  // Removed handleShiftSelect logic as it's now defaulted to Management
 
   const startPermitFlow = () => {
       setPermitOpen(true);
@@ -343,29 +335,59 @@ export default function EmployeeDashboard() {
       }
       if (today?.checkOut) {
           return (
-            <Button
-              disabled
-              className="w-full py-8 text-xl font-bold rounded-2xl shadow-lg bg-gray-200 text-gray-400"
-            >
-              Sesi Hari Ini Selesai
-            </Button>
-          );
-      }
-
-      if (!hasCheckedIn) {
-          return (
-              <Button 
-                onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)} 
-                disabled={isLoading}
-                className="w-full h-14 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-green-200 shadow-lg text-lg"
+            <div className="flex flex-col gap-3 w-full">
+              <Button
+                disabled
+                className="w-full py-8 text-xl font-bold rounded-2xl shadow-lg bg-gray-200 text-gray-400"
+              >
+                Sesi Hari Ini Selesai
+              </Button>
+              <Button
+                onClick={handleResumeWork}
+                className="w-full h-14 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold shadow-blue-200 shadow-lg text-lg"
               >
                 {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
                     <>
-                        <Camera className="mr-2 h-5 w-5" />
-                        Absen Masuk
+                        <Zap className="mr-2 h-5 w-5" />
+                        {new Date().getHours() >= 17 ? "Lanjut Overtime" : "Lanjut Kerja (Sesi Baru)"}
                     </>
                 )}
               </Button>
+            </div>
+          );
+      }
+
+
+
+      if (!hasCheckedIn) {
+          return (
+              <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-xl border border-orange-100 shadow-sm flex items-center justify-between">
+                      <div className="flex flex-col">
+                          <span className="font-bold text-gray-800">Jadwal Piket?</span>
+                          <span className="text-xs text-gray-500">Masuk sebelum 08:15</span>
+                      </div>
+                      <div 
+                          className={`w-14 h-8 flex items-center bg-gray-300 rounded-full p-1 cursor-pointer transition-colors duration-300 ${isPiket ? 'bg-orange-500' : ''}`}
+                          onClick={() => setIsPiket(!isPiket)}
+                      >
+                          <div className={`bg-white w-6 h-6 rounded-full shadow-md transform duration-300 ${isPiket ? 'translate-x-6' : ''}`} />
+                      </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => startAttendanceFlow(clockIn, "Berhasil Absen Masuk", true)} 
+                    disabled={isLoading}
+                    className="w-full h-14 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-green-200 shadow-lg text-lg"
+                  >
+                    {isLoading ? <Loader2 className="animate-spin mr-2" /> : (
+                        <>
+                            <Camera className="mr-2 h-5 w-5" />
+                            Absen Masuk {isPiket ? '(Piket)' : ''}
+                        </>
+                    )}
+                  </Button>
+              </div>
           );
       }
 
@@ -421,6 +443,13 @@ export default function EmployeeDashboard() {
       }
   };
 
+  // Fetch location when camera opens
+  useEffect(() => {
+    if (isCameraOpen) {
+      getCoordinates().catch(console.error);
+    }
+  }, [isCameraOpen]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Camera Modal */}
@@ -428,14 +457,11 @@ export default function EmployeeDashboard() {
         open={isCameraOpen}
         onCapture={handlePhotoCaptured} 
         onClose={() => setIsCameraOpen(false)} 
+        locationAddress={locationAddress}
+        userName={user?.fullName}
       />
 
-      {/* Shift Selection Modal */}
-      <ShiftModal 
-          open={isShiftModalOpen} 
-          onSelect={handleShiftSelect}
-          onClose={() => setIsShiftModalOpen(false)}
-      />
+      {/* No Shift Selection Modal - Defaulting to Management */}
 
       <CompanyHeader />
 

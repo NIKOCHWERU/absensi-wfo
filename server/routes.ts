@@ -91,15 +91,21 @@ export async function registerRoutes(
       const today = getJakartaDate();
       const userId = req.user!.id;
 
-      // Check if already checked in
-      const existing = await storage.getAttendanceByUserAndDate(userId, today);
-      if (existing) {
-        return res.status(400).json({ message: "Already checked in for today" });
+      // Check existing sessions for today
+      const existingSessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+      const activeSession = existingSessions.find(s => !s.checkOut);
+
+      if (activeSession) {
+        return res.status(400).json({ message: "Sesi sebelumnya belum selesai (belum absen pulang)." });
       }
+
+      const nextSessionNumber = existingSessions.length + 1;
 
       const photoFileId = await handlePhotoUpload(req, 'clockIn');
       const location = req.body.location;
-      const shift = req.body.shift; // 'Shift 1', 'Shift 2', 'Shift 3', 'Long Shift'
+
+      const shift = "Management"; // Default shift name
+      const shiftType = req.body.shiftType || 'Regular'; // 'Regular' or 'Piket'
 
       // Determine status based on Shift Rules
       const now = new Date();
@@ -108,39 +114,35 @@ export async function registerRoutes(
       const hour = jakartaTime.getHours();
       const minute = jakartaTime.getMinutes();
       const timeInMinutes = hour * 60 + minute;
+      const dayOfWeek = jakartaTime.getDay(); // 0 = Sunday, 6 = Saturday
 
       let status = "present";
+      let isOvertime = false;
+      let notes = "";
 
-      /*
-        Rules:
-        Shift 1: Late if > 07:00 (implies > 07:00 and <= 10:00 per prompt, assuming entry window)
-        Shift 2: Late if > 12:00 (and < 14:00)
-        Shift 3: Late if > 15:00 (and < 17:00)
-        Long Shift: Late if > 07:00 (and < 10:00)
-      */
-
-      if (shift === 'Shift 1' || shift === 'Long Shift' || shift === 'Tim Management') {
-        // Late if > 07:00 (7 * 60 = 420 minutes)
-        if (timeInMinutes > 420) {
-          status = "late";
-        }
-      } else if (shift === 'Shift 2') {
-        // Late if > 12:00 (12 * 60 = 720 minutes)
-        if (timeInMinutes > 720) {
-          status = "late";
-        }
-      } else if (shift === 'Shift 3') {
-        // Late if > 15:00 (15 * 60 = 900 minutes)
-        if (timeInMinutes > 900) {
-          status = "late";
-        }
+      // Holiday / Weekend Logic
+      // 0 (Sun) or 6 (Sat)
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        isOvertime = true;
+        status = "overtime";
+        notes = "Lembur Hari Libur";
       } else {
-        // Fallback or default logic if no shift provided (though frontend should force it)
-        // Default to Shift 1 logic or just present
-        if (timeInMinutes > 420) {
+        // Normal Day Logic
+        // Default deadline
+        let deadlineMinutes = 8 * 60 + 30; // 08:30 (510 min)
+
+        if (shiftType === 'Piket') {
+          deadlineMinutes = 8 * 60 + 15; // 08:15 (495 min)
+        }
+
+        if (timeInMinutes > deadlineMinutes) {
           status = "late";
         }
       }
+
+      // Special Overtime (Malam) Check?
+      // "jika masuk artinya OT / Lembur" -> Context: "kalau masuk... (libur) ... artinya OT"
+      // "jika selesai absen jam 5, laaanjut sesi Overtime... ulangi sesi absen" -> This is for 'resume' route.
 
       const attendance = await storage.createAttendance({
         userId,
@@ -149,7 +151,11 @@ export async function registerRoutes(
         status: status,
         checkInPhoto: photoFileId,
         checkInLocation: location,
-        shift: shift // Store the shift
+        shift: shift,
+        shiftType: shiftType,
+        isOvertime: isOvertime,
+        sessionNumber: nextSessionNumber,
+        notes: notes
       });
 
       res.json(attendance);
@@ -271,48 +277,51 @@ export async function registerRoutes(
 
     const today = getJakartaDate();
     const userId = req.user!.id;
-    const existing = await storage.getAttendanceByUserAndDate(userId, today);
 
-    if (!existing) {
-      return res.status(400).json({ message: "No attendance record to resume" });
+    // Get all sessions for today to determine next session number
+    const existingSessions = await storage.getAttendanceSessionsByUserAndDate(userId, today);
+
+    if (existingSessions.length === 0) {
+      return res.status(400).json({ message: "No attendance record found for today" });
     }
 
-    // Recalculate status based on shift if it was 'permission'/'sick'
-    // or just restore it to something sensible.
-    // If it was 'permission', let's check shift again or just set to 'present'/'late'
-    let status = existing.status;
-    if (existing.status === 'permission' || existing.status === 'sick') {
-      // Default to recalculate or just 'present' if we don't know
-      // Better: use the same logic as clockIn
-      const now = new Date(existing.checkIn!); // Use original checkIn time
-      const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-      const hour = jakartaTime.getHours();
-      const minute = jakartaTime.getMinutes();
-      const timeInMinutes = hour * 60 + minute;
-
-      status = "present";
-      const shift = existing.shift;
-      if (shift === 'Shift 1' || shift === 'Long Shift' || shift === 'Tim Management') {
-        if (timeInMinutes > 420) status = "late";
-      } else if (shift === 'Shift 2') {
-        if (timeInMinutes > 720) status = "late";
-      } else if (shift === 'Shift 3') {
-        if (timeInMinutes > 900) status = "late";
-      } else {
-        if (timeInMinutes > 420) status = "late";
-      }
+    // Check if there's an active (not checked out) session
+    const activeSession = existingSessions.find(s => !s.checkOut);
+    if (activeSession) {
+      return res.status(400).json({ message: "Masih ada sesi aktif. Silakan pulang dulu sebelum lanjut kerja." });
     }
 
-    const attendance = await storage.updateAttendance(existing.id, {
-      checkOut: null,
-      checkOutPhoto: null,
-      checkOutLocation: null,
+    // Create new session with incremented session number
+    // Create new session with incremented session number
+    const nextSessionNumber = existingSessions.length + 1;
+    const now = new Date();
+    const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    const hour = jakartaTime.getHours();
+
+    let status = "present";
+    let isOvertime = false;
+    let notes = `Sesi ke-${nextSessionNumber}`;
+
+    // Overtime Logic for Resume
+    if (hour >= 17) {
+      status = "overtime";
+      isOvertime = true;
+      notes = `Lembur (Sesi ${nextSessionNumber})`;
+    }
+
+    // Create new attendance session
+    const newSession = await storage.createAttendance({
+      userId,
+      date: today,
+      checkIn: now,
       status: status,
-      permitResumeAt: new Date(), // Record when they resumed work
-      notes: existing.notes ? `${existing.notes} (Resumed)` : null
+      shift: 'Management',
+      sessionNumber: nextSessionNumber,
+      isOvertime: isOvertime,
+      notes: notes
     });
 
-    res.json(attendance);
+    res.json(newSession);
   });
 
   app.get(api.attendance.list.path, async (req, res) => {
@@ -330,7 +339,33 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     const today = getJakartaDate();
-    const record = await storage.getAttendanceByUserAndDate(req.user!.id, today);
+    const sessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, today);
+
+    // 6 AM Reset Logic: Auto-close yesterday's open sessions
+    if (sessions.length === 0) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+      const yesterdaySessions = await storage.getAttendanceSessionsByUserAndDate(req.user!.id, yesterdayStr);
+      const openSession = yesterdaySessions.find(s => !s.checkOut);
+
+      if (openSession) {
+        const now = new Date();
+        const jakartaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+        if (jakartaTime.getHours() >= 6) {
+          // Auto-close yesterday's session at 6 AM
+          await storage.updateAttendance(openSession.id, {
+            checkOut: new Date(jakartaTime.setHours(6, 0, 0, 0)),
+            notes: openSession.notes ? `${openSession.notes} (Auto-closed at 06:00)` : "Auto-closed at 06:00"
+          });
+          console.log(`[AutoReset] Closed session ${openSession.sessionNumber} for user ${req.user!.id} from ${yesterdayStr}`);
+        }
+      }
+    }
+
+    // Return active session (not checked out) or latest session
+    const activeSession = sessions.find(s => !s.checkOut);
+    const record = activeSession || sessions[sessions.length - 1];
 
     res.json(record || null);
   });
@@ -539,18 +574,82 @@ export async function registerRoutes(
     // So I will update storage.ts in NEXT step.
     // For now, I will add the route and it will fail if method missing. 
     // Actually, I can use db directly here if I import db?
-    // No, let's stick to storage pattern. I will add storage.deleteAnnouncement in next step.
-    // So I'll comment out the call or just add it knowing I'll fix it immediately.
-
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteAnnouncement(id);
-      res.sendStatus(204);
-    } catch (e) {
-      console.error(e);
-      res.sendStatus(500);
-    }
+    // No, let's stick to storage pattern. I will add stor    } catch (e) {
+    console.error(e);
+    res.sendStatus(500);
+  }
   });
 
-  return httpServer;
+// --- Shift Swap Routes ---
+
+app.post("/api/shift-swaps", async (req, res) => {
+  if (!req.isAuthenticated()) return res.sendStatus(401);
+
+  try {
+    // Validate input manually or use schema
+    const { targetUserId, date, reason } = req.body;
+    if (!date || !reason) {
+      return res.status(400).json({ message: "Date and Reason are required" });
+    }
+
+    const swap = await storage.createShiftSwap({
+      requesterId: req.user!.id,
+      targetUserId: targetUserId ? parseInt(targetUserId) : null, // Optional target?
+      date: date, // YYYY-MM-DD
+      reason: reason,
+      status: 'pending'
+    });
+    res.status(201).json(swap);
+  } catch (e) {
+    console.error("Shift Swap Create Error:", e);
+    res.status(500).json({ message: "Failed to create request" });
+  }
+});
+
+app.get("/api/shift-swaps", async (req, res) => {
+  if (!req.isAuthenticated()) return res.sendStatus(401);
+
+  try {
+    // If admin, maybe see all? For now, let's just see mine (requested or received)
+    // Or if admin, see all.
+    const userId = req.user!.role === 'admin' ? undefined : req.user!.id;
+    const swaps = await storage.getShiftSwaps(userId);
+    res.json(swaps);
+  } catch (e) {
+    console.error("Shift Swap List Error:", e);
+    res.status(500).json({ message: "Failed to fetch requests" });
+  }
+});
+
+app.patch("/api/shift-swaps/:id", async (req, res) => {
+  if (!req.isAuthenticated()) return res.sendStatus(401);
+
+  // Only target user or Admin can approve/reject?
+  // For now, let's allow Admin or Target User.
+
+  try {
+    const id = parseInt(req.params.id);
+    const { status } = req.body; // 'approved' | 'rejected'
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const swap = await storage.getShiftSwapById(id);
+    if (!swap) return res.sendStatus(404);
+
+    // Authorization check
+    if (req.user!.role !== 'admin' && req.user!.id !== swap.targetUserId) {
+      return res.status(403).json({ message: "Not authorized to update this request" });
+    }
+
+    const updated = await storage.updateShiftSwapStatus(id, status);
+    res.json(updated);
+  } catch (e) {
+    console.error("Shift Swap Update Error:", e);
+    res.status(500).json({ message: "Failed to update request" });
+  }
+});
+
+return httpServer;
 }

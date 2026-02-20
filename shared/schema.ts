@@ -40,8 +40,11 @@ export const attendance = mysqlTable("attendance", {
   checkOutPhoto: varchar("check_out_photo", { length: 255 }),
   checkOutLocation: text("check_out_location"),
 
-  shift: varchar("shift", { length: 50 }), // 'Shift 1', 'Shift 2', 'Shift 3', 'Long Shift'
-  status: mysqlEnum("status", ["present", "late", "sick", "permission", "absent"]).default("absent"),
+  shift: varchar("shift", { length: 50 }), // 'Shift 1', 'Shift 2', 'Shift 3', 'Long Shift', 'Management', 'Piket'
+  shiftType: varchar("shift_type", { length: 20 }), // 'Regular', 'Piket'
+  isOvertime: boolean("is_overtime").default(false), // True if working on holiday/weekend or extra hours
+  sessionNumber: int("session_number").default(1), // Track multiple sessions per day
+  status: mysqlEnum("status", ["present", "late", "sick", "permission", "absent", "overtime"]).default("absent"),
   notes: text("notes"), // For permission/sick details
   permitExitAt: timestamp("permit_exit_at"), // When they left for permit mid-day
   permitResumeAt: timestamp("permit_resume_at"), // When they resumed work
@@ -55,6 +58,16 @@ export const announcements = mysqlTable("announcements", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   authorId: int("author_id"),
+});
+
+export const shiftSwaps = mysqlTable("shift_swaps", {
+  id: int("id").primaryKey().autoincrement(),
+  requesterId: int("requester_id").notNull(),
+  targetUserId: int("target_user_id"), // Can be null if open swap? For now let's say target specific user.
+  date: date("date").notNull(), // The date of the shift to swap
+  reason: text("reason").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
@@ -77,6 +90,19 @@ export const announcementsRelations = relations(announcements, ({ one }) => ({
   }),
 }));
 
+export const shiftSwapsRelations = relations(shiftSwaps, ({ one }) => ({
+  requester: one(users, {
+    fields: [shiftSwaps.requesterId],
+    references: [users.id],
+    relationName: "swaps_requested"
+  }),
+  targetUser: one(users, {
+    fields: [shiftSwaps.targetUserId],
+    references: [users.id],
+    relationName: "swaps_received"
+  }),
+}));
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
@@ -89,3 +115,6 @@ export type Attendance = typeof attendance.$inferSelect;
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export const insertShiftSwapSchema = createInsertSchema(shiftSwaps).omit({ id: true, createdAt: true, status: true });
+export type ShiftSwap = typeof shiftSwaps.$inferSelect;
+export type InsertShiftSwap = z.infer<typeof insertShiftSwapSchema>;

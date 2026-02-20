@@ -1,6 +1,8 @@
+```typescript
 import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
-  users, attendance, announcements
+  users, attendance, announcements,
+  shiftSwaps, ShiftSwap, InsertShiftSwap
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
@@ -82,8 +84,17 @@ export class DatabaseStorage implements IStorage {
     // date here is string YYYY-MM-DD
     const [record] = await db.select()
       .from(attendance)
-      .where(and(eq(attendance.userId, userId), sql`DATE(${attendance.date}) = ${date}`));
+      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `));
     return record;
+  }
+
+  async getAttendanceSessionsByUserAndDate(userId: number, date: string): Promise<Attendance[]> {
+    // Get all sessions for a user on a specific date
+    const records = await db.select()
+      .from(attendance)
+      .where(and(eq(attendance.userId, userId), sql`DATE(${ attendance.date }) = ${ date } `))
+      .orderBy(attendance.sessionNumber);
+    return records;
   }
 
   async updateAttendance(id: number, updates: Partial<Attendance>): Promise<Attendance> {
@@ -113,10 +124,10 @@ export class DatabaseStorage implements IStorage {
         startMonth = 12;
         startYear -= 1;
       }
-      const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-26`;
+      const startDate = `${ startYear } -${ String(startMonth).padStart(2, '0') } -26`;
 
       // Calculate end date: 25th of current month
-      const endDate = `${year}-${String(month).padStart(2, '0')}-25`;
+      const endDate = `${ year } -${ String(month).padStart(2, '0') } -25`;
 
       conditions.push(gte(attendance.date, new Date(startDate)));
       conditions.push(lte(attendance.date, new Date(endDate)));
@@ -140,6 +151,35 @@ export class DatabaseStorage implements IStorage {
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
+  // Shift Swap Methods
+  async createShiftSwap(swap: InsertShiftSwap): Promise<ShiftSwap> {
+    const [result] = await db.insert(shiftSwaps).values(swap);
+    const [created] = await db.select().from(shiftSwaps).where(eq(shiftSwaps.id, result.insertId));
+    return created;
+  }
+
+  async getShiftSwaps(userId?: number): Promise<ShiftSwap[]> {
+    if (userId) {
+      return db.select().from(shiftSwaps).where(
+        or(
+          eq(shiftSwaps.requesterId, userId),
+          eq(shiftSwaps.targetUserId, userId)
+        )
+      ).orderBy(desc(shiftSwaps.createdAt));
+    }
+    return db.select().from(shiftSwaps).orderBy(desc(shiftSwaps.createdAt));
+  }
+
+  async getShiftSwapById(id: number): Promise<ShiftSwap | undefined> {
+    const [swap] = await db.select().from(shiftSwaps).where(eq(shiftSwaps.id, id));
+    return swap;
+  }
+
+  async updateShiftSwapStatus(id: number, status: 'approved' | 'rejected'): Promise<ShiftSwap> {
+    await db.update(shiftSwaps).set({ status }).where(eq(shiftSwaps.id, id));
+    const [updated] = await db.select().from(shiftSwaps).where(eq(shiftSwaps.id, id));
+    return updated;
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -160,6 +200,7 @@ export interface IStorage {
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   getAttendance(id: number): Promise<Attendance | undefined>;
   getAttendanceByUserAndDate(userId: number, date: string): Promise<Attendance | undefined>;
+  getAttendanceSessionsByUserAndDate(userId: number, date: string): Promise<Attendance[]>;
   updateAttendance(id: number, updates: Partial<Attendance>): Promise<Attendance>;
   getAttendanceHistory(userId?: number, monthStr?: string): Promise<Attendance[]>;
 
@@ -167,4 +208,10 @@ export interface IStorage {
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(): Promise<Announcement[]>;
   deleteAnnouncement(id: number): Promise<void>;
+  
+  // Shift Swaps
+  createShiftSwap(swap: InsertShiftSwap): Promise<ShiftSwap>;
+  getShiftSwaps(userId?: number): Promise<ShiftSwap[]>;
+  getShiftSwapById(id: number): Promise<ShiftSwap | undefined>;
+  updateShiftSwapStatus(id: number, status: 'approved' | 'rejected'): Promise<ShiftSwap>;
 }
