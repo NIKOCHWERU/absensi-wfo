@@ -2,7 +2,7 @@
 
 # Configuration
 DOMAIN="absensiwfo.narasumberhukum.online"
-PORT=5000
+PORT=5005
 APP_NAME="absensi-wfo"
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
 

@@ -4,7 +4,7 @@ module.exports = {
         script: "./dist/index.cjs",
         env: {
             NODE_ENV: "production",
-            PORT: 5000,
+            PORT: 5005,
             DATABASE_URL: "mysql://niko:niko@localhost:3306/absensi_wfo", // Update with your VPS DB URL
             GOOGLE_DRIVE_CLIENT_ID: "YOUR_GOOGLE_DRIVE_CLIENT_ID",
             GOOGLE_DRIVE_CLIENT_SECRET: "YOUR_GOOGLE_DRIVE_CLIENT_SECRET",
