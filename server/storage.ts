@@ -1,7 +1,8 @@
 import {
   User, InsertUser, Attendance, InsertAttendance, Announcement, InsertAnnouncement,
   users, attendance, announcements,
-  shiftSwaps, ShiftSwap, InsertShiftSwap
+  shiftSwaps, ShiftSwap, InsertShiftSwap,
+  piketSchedules, PiketSchedule, InsertPiketSchedule
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
