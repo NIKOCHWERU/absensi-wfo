@@ -684,9 +684,14 @@ export async function registerRoutes(
 
   app.get("/api/admin/piket-schedules", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== 'admin') return res.sendStatus(401);
-    const month = req.query.month as string | undefined;
-    const list = await storage.getPiketSchedules(month);
-    res.json(list);
+    try {
+      const month = req.query.month as string | undefined;
+      const list = await storage.getPiketSchedules(month);
+      res.json(list);
+    } catch (e) {
+      console.error("[API] get /api/admin/piket-schedules error:", e);
+      res.status(500).json({ message: "Gagal mengambil jadwal piket" });
+    }
   });
 
   app.post("/api/admin/piket-schedules", async (req, res) => {
@@ -707,9 +712,14 @@ export async function registerRoutes(
 
   app.get("/api/piket-schedules", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const month = req.query.month as string | undefined;
-    const list = await storage.getPiketSchedules(month);
-    res.json(list);
+    try {
+      const month = req.query.month as string | undefined;
+      const list = await storage.getPiketSchedules(month);
+      res.json(list);
+    } catch (e) {
+      console.error("[API] get /api/piket-schedules error:", e);
+      res.status(500).json({ message: "Gagal mengambil jadwal piket" });
+    }
   });
 
   return httpServer;
